@@ -30,16 +30,27 @@ anonymous_telemetry = AnonymousTelemetry()
 
 
 def signal_handler(sig, frame):
-    """Signal handler to catch termination signals and kill server processes."""
+    """Improved signal handler to catch termination signals and gracefully shut down server processes."""
+    console.print(f"Received signal: [bold yellow]{sig}[/bold yellow], initiating shutdown...")
+
     global api_process, ui_process
-    console.print("\n🛑 [bold yellow]Stopping servers...[/bold yellow]")
-    if api_process:
-        api_process.terminate()
-        console.print("🛑 [bold yellow]API server stopped.[/bold yellow]")
-    if ui_process:
-        ui_process.terminate()
-        console.print("🛑 [bold yellow]UI server stopped.[/bold yellow]")
-    sys.exit(0)
+
+    try:
+        if api_process:
+            console.print("Terminating API process...")
+            api_process.terminate()
+            api_process.wait()
+            console.print("API process terminated.", style="green")
+
+        if ui_process:
+            console.print("Terminating UI process...")
+            ui_process.terminate()
+            ui_process.wait()
+            console.print("UI process terminated.", style="green")
+    except Exception as e:
+        console.print(f"Error during shutdown: [red]{e}[/red]")
+    finally:
+        sys.exit(0)
 
 
 @click.group()
@@ -159,7 +170,8 @@ def start():
     # Keep the script running until it receives a kill signal
     try:
         api_process.wait()
-        ui_process.wait()
+        if ui_process is not None:  # Check if ui_process has been assigned
+            ui_process.wait()
     except KeyboardInterrupt:
         console.print("\n🛑 [bold yellow]Stopping server...[/bold yellow]")
 
